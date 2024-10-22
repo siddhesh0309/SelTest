@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Date Input for AMFI AUM Reports</title>
+    <style>
+      .popup {
+        display: none;
+        position: fixed;
+        left: 50%;
+        top: 50%;
+        transform: translate(-50%, -50%);
+        border: 1px solid #ccc;
+        padding: 20px;
+        background-color: #fff;
+        z-index: 1000;
+      }
+      .overlay {
+        display: none;
+        position: fixed;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.5);
+        z-index: 999;
+      }
+      button {
+        margin: 10px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>AMFI AUM Report Downloader</h1>
+    <button onclick="showPopup()">Download Reports</button>
+
+    <!-- Overlay for Popup -->
+    <div class="overlay" id="overlay"></div>
+
+    <!-- Popup Form -->
+    <div class="popup" id="popupForm">
+      <h2>Select Date Range</h2>
+      <label for="fromDate">From Date:</label>
+      <input
+        type="text"
+        id="fromDate"
+        placeholder="e.g., June 2024"
+      /><br /><br />
+      <label for="toDate">To Date:</label>
+      <input
+        type="text"
+        id="toDate"
+        placeholder="e.g., July 2024"
+      /><br /><br />
+      <button onclick="downloadReports()">Download</button>
+      <button onclick="closePopup()">Cancel</button>
+    </div>
+
+    <script>
+      function showPopup() {
+        document.getElementById("popupForm").style.display = "block";
+        document.getElementById("overlay").style.display = "block";
+      }
+
+      function closePopup() {
+        document.getElementById("popupForm").style.display = "none";
+        document.getElementById("overlay").style.display = "none";
+      }
+
+      function downloadReports() {
+        const fromDate = document.getElementById("fromDate").value;
+        const toDate = document.getElementById("toDate").value;
+
+        if (!fromDate || !toDate) {
+          alert("Please fill in both dates.");
+          return;
+        }
+
+        // Make API call
+        fetch(
+          `/download-aum-reports/?from_date=${encodeURIComponent(
+            fromDate
+          )}&to_date=${encodeURIComponent(toDate)}`
+        )
+          .then((response) => response.json())
+          .then((data) => {
+            alert(data.message || "Report downloaded successfully");
+            closePopup();
+          })
+          .catch((error) => {
+            console.error("Error:", error);
+            alert("An error occurred while downloading the reports.");
+          });
+      }
+    </script>
+  </body>
+</html>
