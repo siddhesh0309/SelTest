@@ -18,3 +18,63 @@ def start_automation(from_date: str = None, to_date: str = None):
         return {"message": message}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Selenium Automation</title>
+    <script>
+        function formatDate(dateString) {
+            const date = new Date(dateString);
+            const day = ("0" + date.getDate()).slice(-2); // Ensure two-digit day
+            const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+            const month = monthNames[date.getMonth()]; // Get month name
+            const year = date.getFullYear();
+            return `${day}-${month}-${year}`;
+        }
+
+        async function startAutomation() {
+            const fromDateInput = document.getElementById("from_date").value;
+            const toDateInput = document.getElementById("to_date").value;
+
+            if (!fromDateInput || !toDateInput) {
+                alert("Please provide both From Date and To Date.");
+                return;
+            }
+
+            // Format the date to "10-Oct-2024" format
+            const fromDate = formatDate(fromDateInput);
+            const toDate = formatDate(toDateInput);
+
+            const url = `/start-automation?from_date=${fromDate}&to_date=${toDate}`;
+
+            try {
+                const response = await fetch(url);
+                if (!response.ok) {
+                    throw new Error(`Error: ${response.statusText}`);
+                }
+
+                const result = await response.json();
+                alert(result.message);
+            } catch (error) {
+                alert("Failed to start automation: " + error.message);
+            }
+        }
+    </script>
+</head>
+<body>
+    <h2>Start Selenium Automation</h2>
+    <form onsubmit="event.preventDefault(); startAutomation();">
+        <label for="from_date">From Date:</label>
+        <input type="date" id="from_date" name="from_date" required><br><br>
+        <label for="to_date">To Date:</label>
+        <input type="date" id="to_date" name="to_date" required><br><br>
+        <button type="submit">Start Automation</button>
+    </form>
+</body>
+</html>
