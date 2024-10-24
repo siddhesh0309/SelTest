@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Date Input Pop-up</title>
+  </head>
+  <body>
+    <h1>AMFI Automation</h1>
+    <button onclick="getDateInput()">Start Automation</button>
+
+    <div id="dateModal" style="display: none">
+      <label for="from_date">From Date:</label>
+      <input type="date" id="from_date" /><br /><br />
+      <label for="to_date">To Date:</label>
+      <input type="date" id="to_date" /><br /><br />
+      <button onclick="startAutomation()">Submit</button>
+    </div>
+
+    <script>
+      function getDateInput() {
+        document.getElementById("dateModal").style.display = "block";
+      }
+
+      // Helper function to format date into dd-mm-yyyy
+      function formatDate(dateString) {
+        const date = new Date(dateString);
+        const day = String(date.getDate()).padStart(2, "0");
+        const month = String(date.getMonth() + 1).padStart(2, "0"); // January is 0!
+        const year = date.getFullYear();
+        return `${day}-${month}-${year}`;
+      }
+
+      function startAutomation() {
+        const fromDateRaw = document.getElementById("from_date").value;
+        const toDateRaw = document.getElementById("to_date").value;
+
+        if (!fromDateRaw || !toDateRaw) {
+          alert("Please select both From and To dates.");
+          return;
+        }
+
+        // Format the dates to dd-mm-yyyy
+        const fromDate = formatDate(fromDateRaw);
+        const toDate = formatDate(toDateRaw);
+
+        fetch(`/start-automation?from_date=${fromDate}&to_date=${toDate}`)
+          .then((response) => response.json())
+          .then((data) => {
+            alert(data.message);
+          })
+          .catch((error) => {
+            alert("Error: " + error.message);
+          });
+      }
+    </script>
+  </body>
+</html>
