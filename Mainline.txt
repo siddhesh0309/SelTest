@@ -1,0 +1,15 @@
+from fastapi import FastAPI, HTTPException, Query
+from scraper import scrape_aum_data
+
+app = FastAPI()
+
+@app.get("/download-aum-reports/")
+async def download_aum_reports(
+    from_date: str = Query(..., description="From month & year (e.g., June 2024)"),
+    to_date: str = Query(..., description="To month & year (e.g., July 2024)"),
+):
+    try:
+        result = scrape_aum_data(from_date=from_date, to_date=to_date)
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
