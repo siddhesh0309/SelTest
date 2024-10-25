@@ -1,0 +1,60 @@
+import threading
+import tkinter as tk
+from tkinter import messagebox
+import requests
+from app import app as fastapi_app
+from fastapi.middleware.cors import CORSMiddleware
+from uvicorn import Config, Server
+import asyncio
+
+fastapi_app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+def start_fastapi():
+    config = Config(fastapi_app, host="127.0.0.1", port=8000, log_level="info")
+    server = Server(config)
+    asyncio.run(server.serve())
+
+threading.Thread(target=start_fastapi, daemon=True).start()
+
+def download_reports():
+    from_date = from_date_entry.get()
+    to_date = to_date_entry.get()
+
+    if not from_date or not to_date:
+        messagebox.showwarning("Input Required", "Please enter both From Date and To Date.")
+        return
+
+    try:
+        response = requests.get("http://127.0.0.1:8000/download-aum-reports/", params={"from_date": from_date, "to_date": to_date})
+        response_data = response.json()
+
+        if response.status_code == 200:
+            messagebox.showinfo("Success", response_data.get("message", "Reports downloaded successfully"))
+        else:
+            messagebox.showerror("Error", response_data.get("detail", "An error occurred"))
+    
+    except requests.exceptions.RequestException as e:
+        messagebox.showerror("Request Error", f"Could not connect to the server:\n{e}")
+
+root = tk.Tk()
+root.title("AMFI AUM Report Downloader")
+root.geometry("300x200")
+
+tk.Label(root, text="From Date (e.g., June 2024):").pack(pady=5)
+from_date_entry = tk.Entry(root)
+from_date_entry.pack(pady=5)
+
+tk.Label(root, text="To Date (e.g., July 2024):").pack(pady=5)
+to_date_entry = tk.Entry(root)
+to_date_entry.pack(pady=5)
+
+download_button = tk.Button(root, text="Download Reports", command=download_reports)
+download_button.pack(pady=20)
+
+root.mainloop()
