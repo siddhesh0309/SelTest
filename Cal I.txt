@@ -1,0 +1,89 @@
+import threading
+import tkinter as tk
+from tkinter import messagebox, ttk
+import requests
+from app import app as fastapi_app
+from fastapi.middleware.cors import CORSMiddleware
+from uvicorn import Config, Server
+import asyncio
+from datetime import datetime
+
+fastapi_app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+def start_fastapi():
+    config = Config(fastapi_app, host="127.0.0.1", port=8000, log_level="info")
+    server = Server(config)
+    asyncio.run(server.serve())
+
+threading.Thread(target=start_fastapi, daemon=True).start()
+
+# Function to download reports
+def download_reports():
+    from_month = from_month_var.get()
+    from_year = from_year_var.get()
+    to_month = to_month_var.get()
+    to_year = to_year_var.get()
+
+    if not (from_month and from_year and to_month and to_year):
+        messagebox.showwarning("Input Required", "Please select both From and To dates.")
+        return
+
+    from_date = f"{from_month} {from_year}"
+    to_date = f"{to_month} {to_year}"
+
+    try:
+        response = requests.get("http://127.0.0.1:8000/download-aum-reports/", params={"from_date": from_date, "to_date": to_date})
+        response_data = response.json()
+
+        if response.status_code == 200:
+            messagebox.showinfo("Success", response_data.get("message", "Reports downloaded successfully"))
+        else:
+            messagebox.showerror("Error", response_data.get("detail", "An error occurred"))
+    
+    except requests.exceptions.RequestException as e:
+        messagebox.showerror("Request Error", f"Could not connect to the server:\n{e}")
+
+# Set up GUI
+root = tk.Tk()
+root.title("AMFI AUM Report Downloader")
+root.geometry("300x250")
+
+# Dropdown options
+months = [
+    "January", "February", "March", "April", "May", "June", 
+    "July", "August", "September", "October", "November", "December"
+]
+current_year = datetime.now().year
+years = [str(year) for year in range(current_year - 10, current_year + 1)]
+
+# From Date Selection
+tk.Label(root, text="From Month-Year:").pack(pady=5)
+from_month_var = tk.StringVar()
+from_month_dropdown = ttk.Combobox(root, textvariable=from_month_var, values=months, state="readonly")
+from_month_dropdown.pack(pady=5)
+
+from_year_var = tk.StringVar()
+from_year_dropdown = ttk.Combobox(root, textvariable=from_year_var, values=years, state="readonly")
+from_year_dropdown.pack(pady=5)
+
+# To Date Selection
+tk.Label(root, text="To Month-Year:").pack(pady=5)
+to_month_var = tk.StringVar()
+to_month_dropdown = ttk.Combobox(root, textvariable=to_month_var, values=months, state="readonly")
+to_month_dropdown.pack(pady=5)
+
+to_year_var = tk.StringVar()
+to_year_dropdown = ttk.Combobox(root, textvariable=to_year_var, values=years, state="readonly")
+to_year_dropdown.pack(pady=5)
+
+# Download button
+download_button = tk.Button(root, text="Download Reports", command=download_reports)
+download_button.pack(pady=20)
+
+root.mainloop()
