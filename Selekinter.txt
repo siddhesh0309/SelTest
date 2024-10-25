@@ -53,3 +53,70 @@ submit_button = tk.Button(root, text="Start Automation", command=start_automatio
 submit_button.grid(row=2, column=0, columnspan=2, pady=20)
 
 root.mainloop()
+
+import threading
+import uvicorn
+from tkinter import *
+from tkinter import messagebox
+import requests
+from datetime import datetime
+
+# FastAPI function to run as a thread
+def run_fastapi():
+    import app  # Import the app FastAPI module
+    uvicorn.run(app.app, host="127.0.0.1", port=8000, log_level="info")
+
+# Function to handle the API call when dates are submitted
+def start_automation(from_date, to_date):
+    try:
+        url = "http://127.0.0.1:8000/start-automation"
+        params = {"from_date": from_date, "to_date": to_date}
+        response = requests.get(url, params=params)
+        if response.status_code == 200:
+            messagebox.showinfo("Success", response.json()["message"])
+        else:
+            messagebox.showerror("Error", response.json()["detail"])
+    except requests.exceptions.RequestException as e:
+        messagebox.showerror("Connection Error", f"Failed to connect: {e}")
+
+# Tkinter GUI setup
+def start_gui():
+    root = Tk()
+    root.title("Automation App")
+    root.geometry("400x200")
+
+    # Date input fields
+    Label(root, text="From Date (DD-MM-YYYY):").pack(pady=5)
+    from_date_entry = Entry(root)
+    from_date_entry.pack(pady=5)
+
+    Label(root, text="To Date (DD-MM-YYYY):").pack(pady=5)
+    to_date_entry = Entry(root)
+    to_date_entry.pack(pady=5)
+
+    # Submit button
+    def on_submit():
+        from_date = from_date_entry.get()
+        to_date = to_date_entry.get()
+
+        # Validate dates
+        try:
+            datetime.strptime(from_date, "%d-%m-%Y")
+            datetime.strptime(to_date, "%d-%m-%Y")
+            start_automation(from_date, to_date)
+        except ValueError:
+            messagebox.showerror("Date Error", "Enter valid dates in DD-MM-YYYY format")
+
+    submit_button = Button(root, text="Start Automation", command=on_submit)
+    submit_button.pack(pady=20)
+
+    root.mainloop()
+
+# Main entry point
+if __name__ == "__main__":
+    # Start the FastAPI server in a separate thread
+    fastapi_thread = threading.Thread(target=run_fastapi, daemon=True)
+    fastapi_thread.start()
+
+    # Start the Tkinter GUI
+    start_gui()
