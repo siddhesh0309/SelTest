@@ -1,6 +1,9 @@
-output_dir = os.path.join(os.path.dirname(latest_outstanding_file), "Output")
-    os.makedirs(output_dir, exist_ok=True)  # Create Output directory if it doesn't exist
+date_folder_name = datetime.now().strftime('%Y-%m-%d')  # Format: YYYY-MM-DD
+    output_dir = os.path.join(os.path.dirname(latest_outstanding_file), "Output", date_folder_name)
+
+    # Create the date-based Output directory (will create it if it doesn't exist)
+    os.makedirs(output_dir, exist_ok=True)  # Creates the directory without checking if it exists
 
     # Save the result to the Output folder
-    output_file_path = os.path.join(output_dir, f'Tata{updated_date}.xlsx')
+    output_file_path = os.path.join(output_dir, f'Tata_{updated_date}.xlsx')
     output.to_excel(output_file_path, index=False)
