@@ -1,0 +1,6 @@
+output_dir = os.path.join(os.path.dirname(latest_outstanding_file), "Output")
+    os.makedirs(output_dir, exist_ok=True)  # Create Output directory if it doesn't exist
+
+    # Save the result to the Output folder
+    output_file_path = os.path.join(output_dir, f'Tata{updated_date}.xlsx')
+    output.to_excel(output_file_path, index=False)
