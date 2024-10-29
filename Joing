@@ -1,9 +1,75 @@
-date_folder_name = datetime.now().strftime('%Y-%m-%d')  # Format: YYYY-MM-DD
-    output_dir = os.path.join(os.path.dirname(latest_outstanding_file), "Output", date_folder_name)
+import os
+import fnmatch
+import pandas as pd
+from datetime import datetime
 
-    # Create the date-based Output directory (will create it if it doesn't exist)
-    os.makedirs(output_dir, exist_ok=True)  # Creates the directory without checking if it exists
+def find_latest_file_in_unique_folder(filename_pattern, base_dir="C://Users"):
+    latest_file = None
+    latest_time = 0
 
-    # Save the result to the Output folder
-    output_file_path = os.path.join(output_dir, f'Tata_{updated_date}.xlsx')
+    # Walk through the base directory to find the unique user folders
+    for dirpath, dirnames, _ in os.walk(base_dir):
+        # Check if the path matches the unique folder pattern and ends in 'input'
+        if fnmatch.fnmatch(dirpath, os.path.join(base_dir, '*', 'desktop', 'Gststream', 'downstream', 'input')):
+            # Look for the specific file pattern within each unique input folder
+            for filename in fnmatch.filter(os.listdir(dirpath), filename_pattern):
+                path = os.path.join(dirpath, filename)
+                file_mtime = os.path.getmtime(path)
+                if file_mtime > latest_time:
+                    latest_time = file_mtime
+                    latest_file = path
+
+    if not latest_file:
+        print(f"Can't find file matching pattern: {filename_pattern}")
+    return latest_file
+
+def create_output_folder(base_path):
+    # Create a folder for today's date in the downstream directory
+    today = datetime.now().strftime('%Y-%m-%d')
+    output_folder = os.path.join(base_path, 'downstream', 'output', today)
+    os.makedirs(output_folder, exist_ok=True)
+    return output_folder
+
+# Example usage to find the latest file in unique folder structure
+latest_outstanding_file = find_latest_file_in_unique_folder('IFAI Outstanding Down*')
+latest_client_input_file = find_latest_file_in_unique_folder('Client file_input*')
+
+if latest_outstanding_file and latest_client_input_file:
+    print(f"Latest Outstanding File: {latest_outstanding_file}")
+    print(f"Latest Client Input File: {latest_client_input_file}")
+
+    updated_date = datetime.now().strftime('%d.%m.%Y')
+
+    # Load data into DataFrames
+    db = pd.read_excel(latest_client_input_file, engine='openpyxl')
+    df = pd.read_excel(latest_outstanding_file, engine='pyxlsb', header=1)
+    output = pd.read_excel('output_format.xlsx')
+
+    # Create the output folder
+    user_folder = os.path.dirname(latest_client_input_file)
+    output_folder = create_output_folder(user_folder)
+
+    # Create pivot table from the client input data
+    pivot = pd.pivot_table(db, index=['Invoice No'], values='Amount Discounted', aggfunc='sum')
+    pivot['Doc_No'] = pivot.index.astype(str).str.replace('.0', '')
+
+    # Merge pivot with outstanding data
+    merged = pivot.merge(df, how='left', on='Doc_No')
+
+    # Populate output DataFrame with merged data
+    output['Item Number1'] = merged['Doc_No']
+    output['Item Value Paid1'] = merged['Amount Discounted']
+    output['Client Account Identifier'] = merged['Client_No']
+    output['Client Account'] = merged['Client_Name']
+    output['Customer Account Identifier'] = merged['Debtor_No']
+    output['Customer Account'] = merged['Debtor_Name']
+    output['Type of Transaction'] = 'Client'
+    output['Currency'] = 'INR'
+    output['Item Date'] = datetime.now().strftime('%d-%b-%y')
+
+    # Save the result to a new Excel file in the created output folder
+    output_file_path = os.path.join(output_folder, f'Tata{updated_date}.xlsx')
     output.to_excel(output_file_path, index=False)
+    print(f"Output saved to: {output_file_path}")
+else:
+    print("One or both required files are missing.")
