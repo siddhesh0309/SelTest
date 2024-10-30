@@ -1,0 +1,277 @@
+import os
+import glob
+import datetime
+import pandas as pd
+import shutil
+from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.chrome.options import Options
+from selenium import webdriver
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.common.keys import Keys
+from time import sleep
+import io
+from PIL import Image
+import easyocr
+import tkinter as tk
+from tkinter import messagebox
+
+# Initialize EasyOCR Reader
+reader = easyocr.Reader(["en"], gpu=False)
+
+# Define the list of PAN numbers
+pan_numbers = [
+    "AAACS3561K",
+    "AAACL8554F",
+    "AAGFL0627E",
+    "AABCL4552A",
+    "AAMCB4678C",
+    "AABTL8695D",
+    "AABCL4015A",
+    "AAKFL47990",
+    "AALFL7343J",
+    "AACCL9470A",
+    "AAIFL2921P",
+    "AABFL1857F",
+    "AACCL4333L",
+]
+
+link = 2
+time_based_subfolder = "CRILC_Reports"
+download_directory = os.path.join(os.getcwd(), time_based_subfolder)
+
+# Create download directory if it doesn't exist
+if not os.path.exists(download_directory):
+    os.makedirs(download_directory)
+
+# Setup Chrome options
+options = Options()
+options.add_experimental_option(
+    "prefs",
+    {
+        "download.default_directory": download_directory,
+        "download.directory_upgrade": True,
+    },
+)
+
+# Initialize global driver variable
+driver = None
+
+
+# Function to call the browser and navigate to the login page
+def call_browser():
+    global driver
+    service = Service(
+        "C:/Users/SIDDHESH/OneDrive/Desktop/HSBC DOC/chromedriver-win64/chromedriver.exe"
+    )  # Update path if necessary
+    driver = webdriver.Chrome(service=service, options=options)
+    driver.get("https://cims.rbi.org.in/#/login")
+    driver.maximize_window()
+    WebDriverWait(driver, 60).until(
+        EC.presence_of_element_located((By.XPATH, ".//input[@placeholder='Username']"))
+    )
+
+
+# Function to process PAN numbers and download reports
+def call_pan(link, Enter_month):
+    for pan in pan_numbers:
+        print(pan)
+        try:
+            while True:
+                try:
+                    WebDriverWait(driver, 10).until(
+                        EC.visibility_of_element_located(
+                            (By.XPATH, ".//input[@placeholder='PAN']")
+                        )
+                    )
+                    driver.find_element(
+                        By.XPATH, ".//input[@placeholder='PAN']"
+                    ).send_keys(pan)
+                    driver.find_element(
+                        By.XPATH, ".//input[@placeholder='PAN']"
+                    ).send_keys(Keys.ENTER)
+
+                    sleep(0.5)
+                    borrower_name = driver.find_element(
+                        By.XPATH, ".//input[@placeholder='Borrower Name']"
+                    ).get_attribute("value")
+                    print(pan, " ", borrower_name)
+                    if pan and borrower_name:
+                        break
+                except:
+                    pass
+
+            sleep(0.5)
+            while True:
+                try:
+                    inner_captcha = driver.find_element(
+                        By.XPATH, ".//img[@class='captchaImg']"
+                    ).get_attribute("src")
+                    driver.get(inner_captcha)
+                    image = Image.open(io.BytesIO(driver.get_screenshot_as_png()))
+                    driver.back()
+                    image.save("inner_captcha.png")
+                    captcha = reader.readtext("inner_captcha.png")
+                    driver.find_element(
+                        By.XPATH, ".//input[@placeholder='Captcha']"
+                    ).send_keys(eval(captcha[0][1]))
+                    driver.find_element(
+                        By.XPATH, ".//input[@placeholder='Captcha']"
+                    ).send_keys(Keys.ENTER)
+
+                    WebDriverWait(driver, 10).until(
+                        EC.visibility_of_element_located(
+                            (By.XPATH, ".//span[contains(text(), 'Export')]")
+                        )
+                    )
+                    break
+                except:
+                    pass
+
+            while True:
+                try:
+                    driver.find_element(
+                        By.XPATH, ".//span[contains(text(), ' Export')]"
+                    ).click()
+                    driver.find_element(
+                        By.XPATH, ".//span[contains(text(), 'Excel')]"
+                    ).click()
+                    sleep(2)
+                    break
+                except:
+                    pass
+
+            files = glob.glob(download_directory + "/*")
+            max_file = max(files, key=os.path.getmtime)
+            filename = max_file.split("/")[-1].split(".")[0]
+
+            if borrower_name not in filename:
+                try:
+                    new_path = max_file.replace(filename, filename)
+                    new_filename = filename + " - " + borrower_name + ".xlsx"
+                    os.rename(new_path, new_filename)
+                    pan_numbers.remove(pan)
+                    print(f"{pan} : Download")
+                except Exception as e:
+                    print(e)
+
+            while True:
+                try:
+                    driver.find_element(
+                        By.XPATH, "//h5[contains(text(), 'Back')]"
+                    ).click()
+                    driver.find_element(
+                        By.XPATH, ".//input[@placeholder='PAN']"
+                    ).clear()
+                    driver.find_element(
+                        By.XPATH, ".//input[@placeholder='PAN']"
+                    ).send_keys(Keys.ENTER)
+                    break
+                except:
+                    pass
+        except Exception as e:
+            print(e)
+
+    if len(pan_numbers) > 0:
+        call_pan(link, Enter_month)
+
+
+# Function to handle the login process
+def call_credentials(username, password, captcha_input):
+    global driver
+
+    while True:
+        try:
+            WebDriverWait(driver, 10).until(
+                EC.visibility_of_element_located(
+                    (By.XPATH, ".//input[@placeholder='Username']")
+                )
+            )
+            driver.find_element(By.XPATH, ".//input[@placeholder='Username']").clear()
+            driver.find_element(
+                By.XPATH, ".//input[@placeholder='Username']"
+            ).send_keys(username)
+            driver.find_element(
+                By.XPATH, ".//input[@placeholder='Username']"
+            ).send_keys(Keys.ENTER)
+
+            # Wait for the password field to be visible before entering
+            WebDriverWait(driver, 10).until(
+                EC.visibility_of_element_located(
+                    (By.XPATH, ".//input[@placeholder='Password']")
+                )
+            )
+            driver.find_element(By.XPATH, ".//input[@placeholder='Password']").clear()
+            driver.find_element(
+                By.XPATH, ".//input[@placeholder='Password']"
+            ).send_keys(password)
+            driver.find_element(
+                By.XPATH, ".//input[@placeholder='Password']"
+            ).send_keys(Keys.ENTER)
+
+            # Wait for captcha input field to be visible
+            WebDriverWait(driver, 10).until(
+                EC.visibility_of_element_located(
+                    (By.XPATH, ".//input[@placeholder='Captcha']")
+                )
+            )
+            driver.find_element(By.XPATH, ".//input[@placeholder='Captcha']").send_keys(
+                captcha_input
+            )
+            driver.find_element(By.XPATH, ".//input[@placeholder='Captcha']").send_keys(
+                Keys.ENTER
+            )
+
+            # Wait for the OTP field to be visible
+            WebDriverWait(driver, 10).until(
+                EC.visibility_of_element_located(
+                    (By.XPATH, ".//input[@placeholder='Enter OTP']")
+                )
+            )
+            break
+        except Exception as e:
+            print("Error during login process:", e)
+            messagebox.showerror("Error", "Invalid Credentials or Captcha")
+
+
+# Function to handle OTP input and start the automation process
+def submit_credentials():
+    username = username_entry.get()
+    password = password_entry.get()
+    captcha_input = captcha_entry.get()
+
+    # Call the function to fill in the credentials and check for OTP
+    call_credentials(username, password, captcha_input)
+
+    # Show OTP field
+    otp_label.grid(row=3, column=0)
+    otp_entry.grid(row=3, column=1)
+
+
+# Setting up the Tkinter GUI
+root = tk.Tk()
+root.title("RBI CIMS Automation")
+
+# Start the browser on GUI launch
+call_browser()
+
+tk.Label(root, text="Username:").grid(row=0, column=0)
+username_entry = tk.Entry(root)
+username_entry.grid(row=0, column=1)
+
+tk.Label(root, text="Password:").grid(row=1, column=0)
+password_entry = tk.Entry(root, show="*")
+password_entry.grid(row=1, column=1)
+
+tk.Label(root, text="Captcha:").grid(row=2, column=0)
+captcha_entry = tk.Entry(root)
+captcha_entry.grid(row=2, column=1)
+
+otp_label = tk.Label(root, text="OTP:")
+otp_entry = tk.Entry(root)
+
+start_button = tk.Button(root, text="Submit", command=submit_credentials)
+start_button.grid(row=5, columnspan=2)
+
+root.mainloop()
