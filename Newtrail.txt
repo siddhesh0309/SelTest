@@ -1,0 +1,164 @@
+# gui.py
+
+import tkinter as tk
+from automation import call_browser, login, verify_otp, call_pan  # Import functions from automation.py
+
+class LoginGUI:
+    def __init__(self, root):
+        self.root = root
+        self.root.title("RBI Automation Login")
+
+        # Username field
+        self.username_label = tk.Label(root, text="Username:")
+        self.username_label.grid(row=0, column=0)
+        self.username_entry = tk.Entry(root)
+        self.username_entry.grid(row=0, column=1)
+
+        # Password field
+        self.password_label = tk.Label(root, text="Password:")
+        self.password_label.grid(row=1, column=0)
+        self.password_entry = tk.Entry(root, show="*")
+        self.password_entry.grid(row=1, column=1)
+
+        # Captcha field
+        self.captcha_label = tk.Label(root, text="Captcha:")
+        self.captcha_label.grid(row=2, column=0)
+        self.captcha_entry = tk.Entry(root)
+        self.captcha_entry.grid(row=2, column=1)
+
+        # OTP field (hidden initially)
+        self.otp_label = tk.Label(root, text="Enter OTP:")
+        self.otp_entry = tk.Entry(root)
+
+        # Submit button
+        self.submit_button = tk.Button(root, text="Submit", command=self.submit_credentials)
+        self.submit_button.grid(row=3, column=0, columnspan=2)
+
+    def submit_credentials(self):
+        username = self.username_entry.get()
+        password = self.password_entry.get()
+        captcha = self.captcha_entry.get()
+
+        self.driver = call_browser()
+        login(self.driver, username, password, captcha)
+
+        # Display OTP field after login attempt
+        self.otp_label.grid(row=4, column=0)
+        self.otp_entry.grid(row=4, column=1)
+
+        # Verify OTP button
+        self.verify_button = tk.Button(self.root, text="Verify OTP", command=self.verify_otp)
+        self.verify_button.grid(row=5, column=0, columnspan=2)
+
+    def verify_otp(self):
+        otp = self.otp_entry.get()
+        verify_otp(self.driver, otp)
+
+        # After OTP is verified, ask for the month and start PAN processing
+        enter_month = input("Enter Month name (MM-YYYY):")
+        call_pan(self.driver, enter_month)
+
+
+# Initialize and run the Tkinter app
+root = tk.Tk()
+app = LoginGUI(root)
+root.mainloop()
+
+
+# automation.py
+
+import os
+import datetime
+import time
+import io
+from PIL import Image
+import easyocr
+from selenium import webdriver
+from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.common.keys import Keys
+
+# Initialize EasyOCR for captcha reading
+reader = easyocr.Reader(['en'], gpu=False)
+
+# List of PAN numbers to be processed
+pan_numbers = [
+    'AAACS3561K', 'AAACL8554F', 'AAGFL0627E', 'AABCL4552A', 'AAMCB4678C',
+    'AABTL8695D', 'AABCL4015A', 'AAKFL47990', 'AALFL7343J', 'AACCL9470A',
+    'AAIFL2921P', 'AABFL1857F', 'AACCL4333L'
+]
+
+# Chrome options setup for headless browsing
+time_based_subfolder = "CRILC_Reports"
+download_directory = os.path.join(os.getcwd(), time_based_subfolder)
+if not os.path.exists(download_directory):
+    os.makedirs(download_directory)
+
+options = Options()
+options.add_argument('--headless=new')
+options.add_experimental_option("prefs", {
+    "download.default_directory": download_directory,
+    "download.directory_upgrade": True
+})
+
+# Launch the browser and navigate to the URL
+def call_browser():
+    service = Service("C:/path/to/chromedriver.exe")  # Update path to the chromedriver executable
+    driver = webdriver.Chrome(service=service, options=options)
+    driver.get("https://cims.rbi.org.in/#/login")
+    driver.maximize_window()
+    return driver
+
+# Login function
+def login(driver, username, password, captcha):
+    WebDriverWait(driver, 60).until(EC.presence_of_element_located((By.XPATH, ".//input[@placeholder='Username']")))
+    driver.find_element(By.XPATH, ".//input[@placeholder='Username']").send_keys(username)
+    driver.find_element(By.XPATH, ".//input[@placeholder='Password']").send_keys(password)
+    driver.find_element(By.XPATH, ".//input[@placeholder='Captcha']").send_keys(captcha, Keys.ENTER)
+
+# OTP verification
+def verify_otp(driver, otp):
+    WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.XPATH, ".//input[@placeholder='Enter OTP']")))
+    driver.find_element(By.XPATH, ".//input[@placeholder='Enter OTP']").send_keys(otp, Keys.ENTER)
+
+# Handle PAN number processing and captcha
+def call_pan(driver, enter_month):
+    for pan in pan_numbers:
+        try:
+            WebDriverWait(driver, 10).until(
+                EC.visibility_of_element_located((By.XPATH, ".//input[@placeholder='PAN']"))
+            ).send_keys(pan, Keys.ENTER)
+
+            if enter_month:
+                driver.find_element(By.XPATH, ".//input[@type='month']").send_keys(enter_month, Keys.ENTER)
+
+            time.sleep(0.5)
+            borrower_name = driver.find_element(By.XPATH, ".//input[@placeholder='Borrower Name']").get_attribute('value')
+            print(pan, ' ', borrower_name)
+
+            if pan and borrower_name:
+                break
+
+            # Handle captcha
+            inner_captcha = driver.find_element(By.XPATH, ".//img[@class='captchaImg']").get_attribute("src")
+            driver.get(inner_captcha)
+            image = Image.open(io.BytesIO(driver.get_screenshot_as_png()))
+            driver.back()
+            image.save('inner_captcha.png')
+            captcha = reader.readtext('inner_captcha.png')
+            driver.find_element(By.XPATH, ".//input[@placeholder='Captcha']").send_keys(captcha[0][1], Keys.ENTER)
+
+            # Export the report
+            WebDriverWait(driver, 10).until(
+                EC.visibility_of_element_located((By.XPATH, ".//span[contains(text(), 'Export')]"))
+            ).click()
+            driver.find_element(By.XPATH, ".//span[contains(text(), 'Excel')]").click()
+            time.sleep(2)
+
+        except Exception as e:
+            print("Error during PAN processing:", e)
+            continue
+
