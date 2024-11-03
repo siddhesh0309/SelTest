@@ -1,0 +1,181 @@
+
+import os
+import glob
+import datetime
+import pandas as pd
+import shutil
+from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.chrome.options import Options
+from selenium import webdriver
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.common.keys import Keys
+from time import sleep
+import tkinter as tk
+from tkinter import messagebox
+
+# Define the list of PAN numbers
+pan_numbers = [
+    "AAACS3561K",
+    "AAACL8554F",
+    "AAGFL0627E",
+    "AABCL4552A",
+    "AAMCB4678C",
+    "AABTL8695D",
+    "AABCL4015A",
+    "AAKFL47990",
+    "AALFL7343J",
+    "AACCL9470A",
+    "AAIFL2921P",
+    "AABFL1857F",
+    "AACCL4333L",
+]
+
+# Set up directory for downloads with timestamp
+time_based_subfolder = "CRILC_Reports"
+download_directory = os.path.join(os.getcwd(), time_based_subfolder)
+os.makedirs(download_directory, exist_ok=True)
+
+# Setup Chrome options for download
+options = Options()
+options.add_experimental_option(
+    "prefs",
+    {
+        "download.default_directory": download_directory,
+        "download.directory_upgrade": True,
+    },
+)
+driver = None  # Global driver
+
+
+# Function to open browser and navigate to login page
+def call_browser():
+    global driver
+    service = Service(
+        "C:/Users/SIDDHESH/OneDrive/Desktop/HSBC DOC/chromedriver-win64/chromedriver.exe"
+    )
+    driver = webdriver.Chrome(service=service, options=options)
+    driver.get("https://cims.rbi.org.in/#/login")
+    driver.maximize_window()
+    WebDriverWait(driver, 60).until(
+        EC.presence_of_element_located((By.XPATH, ".//input[@placeholder='Username']"))
+    )
+
+
+# Function to process PAN numbers and download reports
+def call_pan():
+    for pan in pan_numbers:
+        try:
+            # Fill in PAN number and retrieve borrower name
+            WebDriverWait(driver, 10).until(
+                EC.visibility_of_element_located(
+                    (By.XPATH, ".//input[@placeholder='PAN']")
+                )
+            ).send_keys(pan, Keys.ENTER)
+            sleep(0.5)
+
+            borrower_name = driver.find_element(
+                By.XPATH, ".//input[@placeholder='Borrower Name']"
+            ).get_attribute("value")
+            print(f"Processing PAN: {pan}, Borrower: {borrower_name}")
+
+            # Wait for Export option to be available
+            WebDriverWait(driver, 10).until(
+                EC.visibility_of_element_located(
+                    (By.XPATH, ".//span[contains(text(), 'Export')]")
+                )
+            )
+
+            # Download report and rename file
+            driver.find_element(By.XPATH, ".//span[contains(text(), 'Export')]").click()
+            driver.find_element(By.XPATH, ".//span[contains(text(), 'Excel')]").click()
+            sleep(2)
+
+            # Rename downloaded file
+            files = glob.glob(download_directory + "/*")
+            max_file = max(files, key=os.path.getmtime)
+            filename = os.path.basename(max_file).split(".")[0]
+            new_filename = f"{filename} - {borrower_name}.xlsx"
+            os.rename(max_file, os.path.join(download_directory, new_filename))
+            print(f"Downloaded and renamed file for PAN {pan}")
+
+            # Clear fields for next PAN
+            driver.find_element(By.XPATH, "//h5[contains(text(), 'Back')]").click()
+            pan_numbers.remove(pan)
+
+        except Exception as e:
+            print(f"Error processing PAN {pan}: {e}")
+    print("PAN processing completed.")
+
+
+# Function to handle login with username, password, and captcha
+def call_credentials(username, password, captcha_input):
+    global driver
+    try:
+        driver.find_element(By.XPATH, ".//input[@placeholder='Username']").send_keys(
+            username, Keys.ENTER
+        )
+        driver.find_element(By.XPATH, ".//input[@placeholder='Password']").send_keys(
+            password, Keys.ENTER
+        )
+
+        # Directly use the captcha_input from the Tkinter GUI
+        driver.find_element(By.XPATH, ".//input[@placeholder='Captcha']").send_keys(
+            captcha_input, Keys.ENTER
+        )
+
+        WebDriverWait(driver, 10).until(
+            EC.visibility_of_element_located(
+                (By.XPATH, ".//input[@placeholder='Enter OTP']")
+            )
+        )
+        print("Login successful. Please enter OTP.")
+    except Exception as e:
+        print(f"Login failed: {e}")
+        messagebox.showerror("Error", "Invalid Credentials or Captcha")
+
+
+# Function to submit credentials from GUI
+def submit_credentials():
+    username = username_entry.get()
+    password = password_entry.get()
+    captcha_input = captcha_entry.get()  # Captcha input from GUI
+    call_credentials(username, password, captcha_input)
+    otp_label.grid(row=3, column=0)
+    otp_entry.grid(row=3, column=1)
+
+
+# Setting up Tkinter GUI
+root = tk.Tk()
+root.title("RBI CIMS Automation")
+call_browser()  # Open browser
+
+tk.Label(root, text="Username:").grid(row=0, column=0)
+username_entry = tk.Entry(root)
+username_entry.grid(row=0, column=1)
+
+tk.Label(root, text="Password:").grid(row=1, column=0)
+password_entry = tk.Entry(root, show="*")
+password_entry.grid(row=1, column=1)
+
+tk.Label(root, text="Captcha:").grid(row=2, column=0)
+captcha_entry = tk.Entry(root)
+captcha_entry.grid(row=2, column=1)
+
+otp_label = tk.Label(root, text="OTP:")
+otp_entry = tk.Entry(root)
+
+start_button = tk.Button(root, text="Submit", command=submit_credentials)
+start_button.grid(row=5, columnspan=2)
+
+
+# Close browser on GUI exit
+def on_closing():
+    if driver:
+        driver.quit()
+    root.destroy()
+
+
+root.protocol("WM_DELETE_WINDOW", on_closing)
+root.mainloop()
