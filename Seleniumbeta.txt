@@ -1,0 +1,128 @@
+from selenium.webdriver.common.action_chains import ActionChains
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.common.keys import Keys
+from selenium import webdriver
+from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.chrome.options import Options
+import tkinter as tk
+from tkinter import messagebox
+
+# Initialize global driver variable
+driver = None
+
+
+# Function to initialize the browser and open the CIMS page
+def call_browser():
+    global driver
+    service = Service(
+        "C:/Users/SIDDHESH/OneDrive/Desktop/HSBC DOC/chromedriver-win64/chromedriver.exe"
+    )  # Adjust path if necessary
+    options = Options()
+    driver = webdriver.Chrome(service=service, options=options)
+    driver.get("https://cims.rbi.org.in/#/login")
+    driver.maximize_window()
+
+
+# Function to pass credentials to the webpage using JavaScript and ActionChains
+def call_credentials(username, password, captcha_input):
+    global driver
+    try:
+        # Wait for the Username field and enter it using JavaScript
+        WebDriverWait(driver, 10).until(
+            EC.presence_of_element_located(
+                (By.XPATH, ".//input[@placeholder='Username']")
+            )
+        )
+        username_field = driver.find_element(
+            By.XPATH, ".//input[@placeholder='Username']"
+        )
+        driver.execute_script(
+            "arguments[0].value = arguments[1];", username_field, username
+        )
+
+        # Wait for the Password field and enter it using ActionChains
+        WebDriverWait(driver, 10).until(
+            EC.presence_of_element_located(
+                (By.XPATH, ".//input[@placeholder='Password']")
+            )
+        )
+        password_field = driver.find_element(
+            By.XPATH, ".//input[@placeholder='Password']"
+        )
+        actions = ActionChains(driver)
+        actions.click(password_field).send_keys(password).perform()
+
+        # Wait for the Captcha field and enter it
+        WebDriverWait(driver, 10).until(
+            EC.presence_of_element_located(
+                (By.XPATH, ".//input[@placeholder='Captcha']")
+            )
+        )
+        captcha_field = driver.find_element(
+            By.XPATH, ".//input[@placeholder='Captcha']"
+        )
+        driver.execute_script(
+            "arguments[0].value = arguments[1];", captcha_field, captcha_input
+        )
+
+        # Submit the form
+        captcha_field.send_keys(Keys.ENTER)
+
+        # Wait for OTP field to ensure login proceeded
+        WebDriverWait(driver, 10).until(
+            EC.presence_of_element_located(
+                (By.XPATH, ".//input[@placeholder='Enter OTP']")
+            )
+        )
+
+    except Exception as e:
+        print("Error during login process:", e)
+        messagebox.showerror(
+            "Error", "Login failed. Please check your credentials and try again."
+        )
+
+
+# Tkinter GUI setup
+root = tk.Tk()
+root.title("RBI CIMS Automation")
+
+# Initialize browser on GUI start
+call_browser()
+
+# Define GUI components
+tk.Label(root, text="Username:").grid(row=0, column=0)
+username_entry = tk.Entry(root)
+username_entry.grid(row=0, column=1)
+
+tk.Label(root, text="Password:").grid(row=1, column=0)
+password_entry = tk.Entry(root, show="*")
+password_entry.grid(row=1, column=1)
+
+tk.Label(root, text="Captcha:").grid(row=2, column=0)
+captcha_entry = tk.Entry(root)
+captcha_entry.grid(row=2, column=1)
+
+otp_label = tk.Label(root, text="OTP:")
+otp_entry = tk.Entry(root)
+
+
+# Function to submit credentials
+def submit_credentials():
+    username = username_entry.get()
+    password = password_entry.get()
+    captcha_input = captcha_entry.get()
+    call_credentials(username, password, captcha_input)
+
+    # Display OTP input field
+    otp_label.grid(row=3, column=0)
+    otp_entry.grid(row=3, column=1)
+    otp_entry.focus()
+
+
+# Submit button
+start_button = tk.Button(root, text="Submit", command=submit_credentials)
+start_button.grid(row=5, columnspan=2)
+
+root.mainloop()
