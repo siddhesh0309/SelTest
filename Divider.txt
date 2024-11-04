@@ -22,3 +22,34 @@ for i in range(num_files):
     split_df.to_excel(output_file, index=False)
 
 print(f'Split the file into {num_files} files successfully.')
+
+
+
+import pandas as pd
+import random
+import string
+
+# Function to generate random PAN numbers
+def generate_pan():
+    return ''.join(random.choices(string.ascii_uppercase, k=5)) + \
+           ''.join(random.choices(string.digits, k=4)) + \
+           random.choice(string.ascii_uppercase)
+
+# Parameters
+num_records = 100000  # Number of records to generate
+
+# Generate data
+data = {
+    "PAN Number": [generate_pan() for _ in range(num_records)],
+    "Status": [random.choice(["Specified", "Non Specified"]) for _ in range(num_records)]
+}
+
+# Create DataFrame
+df = pd.DataFrame(data)
+
+# Save to Excel
+output_file = 'random_pan_data.xlsx'
+df.to_excel(output_file, index=False)
+
+print(f"Excel file '{output_file}' with random PAN numbers and status generated successfully.")
+
