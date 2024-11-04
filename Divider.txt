@@ -53,3 +53,79 @@ df.to_excel(output_file, index=False)
 
 print(f"Excel file '{output_file}' with random PAN numbers and status generated successfully.")
 
+
+
+
+
+import pandas as pd
+import os
+import random
+import string
+import glob
+
+# Function to generate random PAN numbers
+def generate_pan():
+    return ''.join(random.choices(string.ascii_uppercase, k=5)) + \
+           ''.join(random.choices(string.digits, k=4)) + \
+           random.choice(string.ascii_uppercase)
+
+# Generate initial Excel file with random data
+def generate_initial_file(num_records, output_file):
+    data = {
+        "PAN Number": [generate_pan() for _ in range(num_records)],
+        "Status": [random.choice(["Specified", "Non Specified"]) for _ in range(num_records)]
+    }
+    df = pd.DataFrame(data)
+    df.to_excel(output_file, index=False)
+    print(f"Initial Excel file '{output_file}' created successfully.")
+
+# Split initial Excel file into multiple files of 10,000 records each
+def split_excel(input_file, output_directory, records_per_file=10000):
+    df = pd.read_excel(input_file)
+    num_records = len(df)
+    num_files = num_records // records_per_file + (num_records % records_per_file > 0)
+
+    for i in range(num_files):
+        start_index = i * records_per_file
+        end_index = start_index + records_per_file
+        split_df = df.iloc[start_index:end_index]
+
+        output_file = f'{output_directory}/split_file_{i + 1}.xlsx'
+        split_df.to_excel(output_file, index=False)
+        print(f"Created split file '{output_file}'")
+
+# Combine split files and save as separate files for Specified and Non Specified PAN numbers
+def combine_and_filter_split_files(input_directory, output_directory):
+    file_list = glob.glob(os.path.join(input_directory, 'split_file_*.xlsx'))
+    specified_df = pd.DataFrame()
+    non_specified_df = pd.DataFrame()
+
+    for file in file_list:
+        df = pd.read_excel(file)
+        specified_df = pd.concat([specified_df, df[df['Status'] == 'Specified']], ignore_index=True)
+        non_specified_df = pd.concat([non_specified_df, df[df['Status'] == 'Non Specified']], ignore_index=True)
+
+    specified_output = os.path.join(output_directory, 'specified_pan_numbers.xlsx')
+    non_specified_output = os.path.join(output_directory, 'non_specified_pan_numbers.xlsx')
+    
+    specified_df.to_excel(specified_output, index=False)
+    non_specified_df.to_excel(non_specified_output, index=False)
+
+    print(f"Created '{specified_output}' with Specified PAN numbers.")
+    print(f"Created '{non_specified_output}' with Non Specified PAN numbers.")
+
+# Main code execution
+initial_file = 'initial_pan_data.xlsx'
+split_output_directory = 'path/to/split/output/directory'  # Set your split output directory here
+final_output_directory = 'path/to/final/output/directory'  # Set your final output directory here
+
+# Step 1: Generate initial Excel file with random data
+generate_initial_file(100000, initial_file)
+
+# Step 2: Split the initial Excel file into multiple files of 10,000 records each
+split_excel(initial_file, split_output_directory, records_per_file=10000)
+
+# Step 3: Combine split files and create separate files for Specified and Non Specified PAN numbers
+combine_and_filter_split_files(split_output_directory, final_output_directory)
+
+
