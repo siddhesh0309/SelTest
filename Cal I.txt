@@ -87,3 +87,7 @@ download_button = tk.Button(root, text="Download Reports", command=download_repo
 download_button.pack(pady=20)
 
 root.mainloop()
+
+
+concat('Question eq ''', replace(replace(replace(outputs('Compose_Message_Content'), '<p>', ''), '</p>', ''), '<[^>]*>', ''), '''')
+
