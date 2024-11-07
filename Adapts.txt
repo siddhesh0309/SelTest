@@ -1,0 +1,82 @@
+{
+  "type": "AdaptiveCard",
+  "body": [
+    {
+      "type": "TextBlock",
+      "text": "Select a category:",
+      "wrap": true
+    },
+    {
+      "type": "Input.ChoiceSet",
+      "id": "categorySelection",
+      "choices": [
+        {
+          "title": "Loans",
+          "value": "Loans"
+        },
+        {
+          "title": "Payments",
+          "value": "Payments"
+        },
+        {
+          "title": "Credit Card",
+          "value": "Credit Card"
+        }
+      ]
+    }
+  ],
+  "actions": [
+    {
+      "type": "Action.Submit",
+      "title": "Submit"
+    }
+  ],
+  "version": "1.2"
+}
+
+
+
+
+
+{
+  "type": "AdaptiveCard",
+  "body": [
+    {
+      "type": "TextBlock",
+      "text": "Select or enter a question about ${categorySelection}:",
+      "wrap": true
+    },
+    {
+      "type": "Input.ChoiceSet",
+      "id": "questionSelection",
+      "choices": [
+        {
+          "title": "How do I apply for a loan?",
+          "value": "How do I apply for a loan?"
+        },
+        {
+          "title": "What is the interest rate?",
+          "value": "What is the interest rate?"
+        },
+        {
+          "title": "What documents are needed?",
+          "value": "What documents are needed?"
+        }
+      ]
+    },
+    {
+      "type": "Input.Text",
+      "id": "customQuestion",
+      "placeholder": "Type your question here if not listed..."
+    }
+  ],
+  "actions": [
+    {
+      "type": "Action.Submit",
+      "title": "Submit"
+    }
+  ],
+  "version": "1.2"
+}
+
+
