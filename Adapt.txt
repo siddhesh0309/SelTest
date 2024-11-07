@@ -1,0 +1,44 @@
+{
+    "$schema": "https://adaptivecards.io/schemas/adaptive-card.json",
+    "type": "AdaptiveCard",
+    "version": "1.3",
+    "body": [
+        {
+            "type": "TextBlock",
+            "text": "Hello! How can I assist you today? 😊",
+            "size": "Large",
+            "weight": "Bolder"
+        },
+        {
+            "type": "TextBlock",
+            "text": "Which type of query are you facing?",
+            "wrap": true
+        },
+        {
+            "type": "ActionSet",
+            "actions": [
+                {
+                    "type": "Action.Submit",
+                    "title": "Loan",
+                    "data": {
+                        "queryType": "Loan"
+                    }
+                },
+                {
+                    "type": "Action.Submit",
+                    "title": "Credit Cards",
+                    "data": {
+                        "queryType": "Credit Cards"
+                    }
+                },
+                {
+                    "type": "Action.Submit",
+                    "title": "Payments",
+                    "data": {
+                        "queryType": "Payments"
+                    }
+                }
+            ]
+        }
+    ]
+}
