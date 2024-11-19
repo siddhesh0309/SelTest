@@ -1,0 +1,5 @@
+if(contains(variables('messageText'), 'personal loan'), 'personal loan', 
+if(contains(variables('messageText'), 'car loan'), 'car loan',
+if(contains(variables('messageText'), 'business loan'), 'business loan',
+if(contains(variables('messageText'), 'interest rates'), 'interest rates',
+if(contains(variables('messageText'), 'apply'), 'apply', 'not found')))))
