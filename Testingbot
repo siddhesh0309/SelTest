@@ -3,3 +3,13 @@ if(contains(variables('messageText'), 'car loan'), 'car loan',
 if(contains(variables('messageText'), 'business loan'), 'business loan',
 if(contains(variables('messageText'), 'interest rates'), 'interest rates',
 if(contains(variables('messageText'), 'apply'), 'apply', 'not found')))))
+
+
+
+union(
+  if(contains(toLower(variables('messageText')), 'personal loan'), createArray('personal loan'), createArray()),
+  if(contains(toLower(variables('messageText')), 'car loan'), createArray('car loan'), createArray()),
+  if(contains(toLower(variables('messageText')), 'business loan'), createArray('business loan'), createArray()),
+  if(contains(toLower(variables('messageText')), 'interest rates'), createArray('interest rates'), createArray()),
+  if(contains(toLower(variables('messageText')), 'apply'), createArray('apply'), createArray())
+)
