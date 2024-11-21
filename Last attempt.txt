@@ -1,0 +1,18 @@
+join(
+    filter(
+        createArray(
+            if(contains(variables('messageText'), 'personal loan'), 'personal loan', null),
+            if(contains(variables('messageText'), 'car loan'), 'car loan', null),
+            if(contains(variables('messageText'), 'business loan'), 'business loan', null),
+            if(contains(variables('messageText'), 'interest rates'), 'interest rates', null),
+            if(contains(variables('messageText'), 'apply'), 'apply', null)
+        ),
+        not(equals(item(), null))
+    ),
+    ', '
+)
+
+
+
+
+contains(tags, 'personal loan') or contains(tags, 'car loan') or contains(tags, 'business loan') or contains(tags, 'interest rates') or contains(tags, 'apply')
