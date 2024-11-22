@@ -35,3 +35,29 @@ if(
       if(contains(toLower(outputs('Compose')), 'apply'), createArray('apply'), createArray())
    )
 )
+
+
+
+if(
+   equals(
+      length(
+         union(
+            if(contains(toLower(outputs('Compose')), 'personal loan'), createArray('personal loan'), createArray()),
+            if(contains(toLower(outputs('Compose')), 'car loan'), createArray('car loan'), createArray()),
+            if(contains(toLower(outputs('Compose')), 'business loan'), createArray('business loan'), createArray()),
+            if(contains(toLower(outputs('Compose')), 'interest rate'), createArray('interest rate'), createArray()),
+            if(contains(toLower(outputs('Compose')), 'apply'), createArray('apply'), createArray())
+         )
+      ),
+      0
+   ),
+   createArray('not found'),
+   union(
+      if(contains(toLower(outputs('Compose')), 'personal loan'), createArray('personal loan'), createArray()),
+      if(contains(toLower(outputs('Compose')), 'car loan'), createArray('car loan'), createArray()),
+      if(contains(toLower(outputs('Compose')), 'business loan'), createArray('business loan'), createArray()),
+      if(contains(toLower(outputs('Compose')), 'interest rate'), createArray('interest rate'), createArray()),
+      if(contains(toLower(outputs('Compose')), 'apply'), createArray('apply'), createArray())
+   )
+)
+
