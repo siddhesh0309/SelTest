@@ -61,3 +61,6 @@ if(
    )
 )
 
+
+replace(replace(outputs('Compose'), '. ', '.\n'), ', ', ',\n')
+
