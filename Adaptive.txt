@@ -1,0 +1,49 @@
+{
+    "$schema": "http://adaptivecards.io/schemas/adaptive-card.json",
+    "type": "AdaptiveCard",
+    "version": "1.4",
+    "body": [
+        {
+            "type": "TextBlock",
+            "text": "Choose a topic or click 'Show Me Everything':",
+            "wrap": true
+        }
+    ],
+    "actions": [
+        {
+            "type": "Action.Submit",
+            "title": "Performance Management Information",
+            "data": {
+                "selectedOption": "Performance Management Information"
+            }
+        },
+        {
+            "type": "Action.Submit",
+            "title": "Leave and Time Off",
+            "data": {
+                "selectedOption": "Leave and Time Off"
+            }
+        },
+        {
+            "type": "Action.Submit",
+            "title": "Learning Information",
+            "data": {
+                "selectedOption": "Learning Information"
+            }
+        },
+        {
+            "type": "Action.Submit",
+            "title": "About Payroll and Payslips",
+            "data": {
+                "selectedOption": "About Payroll and Payslips"
+            }
+        },
+        {
+            "type": "Action.Submit",
+            "title": "Show Me Everything",
+            "data": {
+                "selectedOption": "Show Me Everything"
+            }
+        }
+    ]
+}
