@@ -1,0 +1,36 @@
+import pandas as pd
+from tabula import read_pdf
+# You can also use camelot for more flexibility:
+# import camelot
+
+# Paths to your files
+pdf_path = "your_file.pdf"
+excel_path = "your_file.xlsx"
+
+# Step 1: Extract tables from the PDF
+# Using tabula
+pdf_tables = read_pdf(pdf_path, pages="all", multiple_tables=True)
+
+# Using camelot (alternative)
+# tables = camelot.read_pdf(pdf_path, pages='all')
+# pdf_tables = [table.df for table in tables]
+
+# Step 2: Load the Excel file
+excel_data = pd.ExcelFile(excel_path)
+worksheets = {sheet: pd.read_excel(excel_path, sheet_name=sheet) for sheet in excel_data.sheet_names}
+
+# Step 3: Map tables to worksheets
+mapping = {}
+for i, (sheet_name, worksheet_data) in enumerate(worksheets.items()):
+    if i < len(pdf_tables):
+        pdf_table = pdf_tables[i]
+        mapping[sheet_name] = pdf_table
+
+        # For demonstration, let's save the mapping results
+        pdf_table.to_csv(f"{sheet_name}_mapped_pdf_table.csv", index=False)
+        worksheet_data.to_csv(f"{sheet_name}_worksheet.csv", index=False)
+
+# Output mapping
+for sheet, table in mapping.items():
+    print(f"Worksheet '{sheet}' mapped with PDF Table:")
+    print(table)
