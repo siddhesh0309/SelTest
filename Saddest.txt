@@ -1,0 +1,36 @@
+import pandas as pd
+import pdfplumber
+
+# Paths to your files
+pdf_path = "your_file.pdf"
+excel_path = "your_file.xlsx"
+
+# Step 1: Extract tables from the PDF
+pdf_tables = []
+with pdfplumber.open(pdf_path) as pdf:
+    for page_number, page in enumerate(pdf.pages, start=1):
+        tables = page.extract_tables()
+        for table in tables:
+            # Convert the extracted table to a DataFrame
+            df = pd.DataFrame(table[1:], columns=table[0])  # Assuming the first row is the header
+            pdf_tables.append(df)
+
+# Step 2: Load Excel file
+excel_data = pd.ExcelFile(excel_path)
+worksheets = {sheet: pd.read_excel(excel_path, sheet_name=sheet) for sheet in excel_data.sheet_names}
+
+# Step 3: Map PDF tables to Excel worksheets
+mapping = {}
+for i, (sheet_name, worksheet_data) in enumerate(worksheets.items()):
+    if i < len(pdf_tables):  # Only map if a PDF table exists
+        pdf_table = pdf_tables[i]
+        mapping[sheet_name] = pdf_table
+
+        # Optional: Save the results to files for review
+        pdf_table.to_csv(f"{sheet_name}_mapped_pdf_table.csv", index=False)
+        worksheet_data.to_csv(f"{sheet_name}_worksheet.csv", index=False)
+
+# Step 4: Print the mapping
+for sheet, table in mapping.items():
+    print(f"Worksheet '{sheet}' mapped with PDF Table:")
+    print(table)
