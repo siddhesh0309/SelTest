@@ -1,0 +1,144 @@
+# Define environment variables or configuration parameters
+
+# Google Cloud Storage bucket and paths
+BUCKET_NAME="gs://eyart-project-files"
+FRONTEND_ZIP="${BUCKET_NAME}/hsbc-12566353-eyart-dev-dev_hsbc_frontend.zip"
+BACKEND_ZIP="${BUCKET_NAME}/hsbc-12566353-eyart-dev-dev_hsbc_backend.zip"
+NGINX_CONFIG_BUCKET="gs://eyart-startup-scripts/nginx.conf"
+TEMPLATES_BUCKET="${BUCKET_NAME}/generate_report_templates.zip"
+SSL_CERT_SECRET="nginx-selfsigned"
+SSL_KEY_SECRET="nginx-selfsigned-key"
+
+# Local directory paths
+APPLICATION_DIR="/home/EY_ART_APP"
+EY_LLP_DIR="/home/EY_LLP"
+FRONTEND_DIR="${APPLICATION_DIR}/frontend"
+BACKEND_DIR="${APPLICATION_DIR}/backend"
+FRONTEND_DIST="${FRONTEND_DIR}/hsbc-12566353-eyart-dev-dev_hsbc_frontend/ART-FE-DEV/dist/eyfrontendv4"
+GUNICORN_SOCKET_PATH="/run/gunicorn.sock"
+GUNICORN_SERVICE_PATH="/etc/systemd/system/gunicorn.service"
+GUNICORN_SOCKET_PATH="/etc/systemd/system/gunicorn.socket"
+NGINX_CONFIG_PATH="/etc/nginx/nginx.conf"
+SSL_CERT_PATH="/etc/ssl/certs/nginx-selfsigned.crt"
+SSL_KEY_PATH="/etc/ssl/certs/nginx-selfsigned.key"
+
+# Number of Gunicorn workers
+GUNICORN_WORKERS=3
+
+# Nginx user and group for file permissions
+NGINX_USER="nginx"
+NGINX_GROUP="nginx"
+
+# Download frontend and backend zip files from Google Cloud Storage bucket
+gsutil cp "${FRONTEND_ZIP}" /application/data
+gsutil cp "${BACKEND_ZIP}" /application/data
+
+# Create directories for frontend and backend
+sudo mkdir -p "${FRONTEND_DIR}"
+sudo mkdir -p "${BACKEND_DIR}"
+
+# Delete existing files and extract new files
+rm -f "${FRONTEND_DIR}"/*
+rm -f "${BACKEND_DIR}"/*
+sudo unzip /application/data/hsbc-12566353-eyart-dev-dev_hsbc_frontend.zip -d "${FRONTEND_DIR}/"
+sudo unzip /application/data/hsbc-12566353-eyart-dev-dev_hsbc_backend.zip -d "${BACKEND_DIR}/"
+
+# Remove zip files after extraction
+rm -f /application/data/hsbc-12566353-eyart-dev-dev_hsbc_backend.zip
+rm -f /application/data/hsbc-12566353-eyart-dev-dev_hsbc_frontend.zip
+
+# Disable SELinux enforcement (if needed)
+sudo setenforce 0
+
+# Copy nginx.conf file from the bucket
+gsutil cp "${NGINX_CONFIG_BUCKET}" "${NGINX_CONFIG_PATH}"
+
+# Restart nginx service and test configuration
+sudo systemctl restart nginx
+nginx -t
+
+# Move frontend and backend data to the application directory
+sudo mkdir -p "${APPLICATION_DIR}"
+sudo mv /application/data/frontend/ "${APPLICATION_DIR}"
+sudo mv /application/data/backend/ "${APPLICATION_DIR}"
+
+# Change ownership and permissions of frontend and backend files
+sudo chown -R "${NGINX_USER}:${NGINX_GROUP}" "${FRONTEND_DIST}"
+sudo chown -R "${NGINX_USER}:${NGINX_GROUP}" "${FRONTEND_DIR}/"
+sudo chmod +755 -R "${FRONTEND_DIST}"
+
+# Fetch SSL certificates from Google Cloud Secrets Manager
+nginxselfsignedcert=$(gcloud secrets versions access latest --secret "${SSL_CERT_SECRET}")
+echo "${nginxselfsignedcert}" > "${SSL_CERT_PATH}"
+
+nginxselfsignedkey=$(gcloud secrets versions access latest --secret "${SSL_KEY_SECRET}")
+echo "${nginxselfsignedkey}" > "${SSL_KEY_PATH}"
+
+# Test nginx configuration and restart service
+nginx -t
+sudo systemctl restart nginx
+
+# Create and configure gunicorn socket and service
+cat > "${GUNICORN_SOCKET_PATH}" <<'EOF'
+[Unit]
+Description=gunicorn socket
+[Socket]
+ListenStream=${GUNICORN_SOCKET_PATH}
+[Install]
+WantedBy=sockets.target
+EOF
+
+cat > "${GUNICORN_SERVICE_PATH}" <<'EOF'
+[Unit]
+Description=gunicorn daemon
+Requires=gunicorn.socket
+After=network.target
+
+[Service]
+User=root
+Group=root
+WorkingDirectory=${APPLICATION_DIR}/backend/hsbc-12566353-eyart-dev-dev_hsbc_backend/EY-ART-BE
+ExecStart=gunicorn --access-logfile - --workers ${GUNICORN_WORKERS} --bind unix:${GUNICORN_SOCKET_PATH} DigicubeV4 wsgi:application
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+# Start gunicorn socket and enable services
+sudo systemctl start gunicorn.socket
+sudo systemctl status gunicorn.socket
+sudo systemctl daemon-reload
+sudo systemctl enable gunicorn
+sudo systemctl enable nginx
+
+# Enable and restart necessary services
+sudo systemctl enable sql-proxy
+sudo systemctl restart gunicorn.socket
+sudo systemctl restart gunicorn.service
+sudo systemctl restart nginx
+sudo systemctl restart sql-proxy
+
+# Create directories in EY_LLP for various files
+sudo mkdir -p "${EY_LLP_DIR}/ack_files" "${EY_LLP_DIR}/attachements" "${EY_LLP_DIR}/attachement" "${EY_LLP_DIR}/bulk_validation_download" "${EY_LLP_DIR}/download_files" "${EY_LLP_DIR}/generate_report" "${EY_LLP_DIR}/bulk_validation" "${EY_LLP_DIR}/data_validation" "${EY_LLP_DIR}/excel-files" "${EY_LLP_DIR}/templates" "${EY_LLP_DIR}/zip_files"
+
+# Copy the templates zip file and extract it
+gsutil cp "${TEMPLATES_BUCKET}" "${EY_LLP_DIR}/templates"
+cd "${EY_LLP_DIR}/templates"
+sudo unzip generate_report_templates.zip -d "${EY_LLP_DIR}/templates/"
+
+# Change ownership and permissions for EY_LLP files
+sudo chown -R "${NGINX_USER}:${NGINX_GROUP}" "${EY_LLP_DIR}/"
+sudo chmod +755 -R "${EY_LLP_DIR}/"
+
+# Set SELinux context for the frontend, backend, and EY_LLP directories
+sudo semanage context -a -t httpd_sys_content_t "${FRONTEND_DIR}(/-*)?"
+sudo restorecon -Rv "${FRONTEND_DIR}"
+sudo semanage context -a -t httpd_sys_content_t "${BACKEND_DIR}(/-*)?"
+sudo restorecon -Rv "${BACKEND_DIR}"
+sudo semanage context -a -t httpd_var_run_t "${BACKEND_DIR}(/-*)?"
+sudo restorecon -Rv "${BACKEND_DIR}"
+sudo semanage context -a -t httpd_sys_content_t "${EY_LLP_DIR}(/-*)?"
+sudo restorecon -Rv "${EY_LLP_DIR}"
+
+# Allow HTTPD to connect to the network (if necessary)
+sudo setsebool -p httpd_can_network_connect 1
